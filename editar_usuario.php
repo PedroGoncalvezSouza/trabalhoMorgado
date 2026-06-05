@@ -1,10 +1,17 @@
 <?php
 session_start();
+require_once 'classes/SegurancaHeaders.php';
 require_once 'classes/Usuario.php';
 
+SegurancaHeaders::configSessionSecurity();
+session_start();
+SegurancaHeaders::setHeaders();
+
 $usuario = new Usuario();
+$usuarioSelecionado = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
     // Buscar os dados do usuário para edição
     $usuarioSelecionado = $usuario->buscarUsuario($_GET['id']);
     if (!$usuarioSelecionado) {
@@ -13,11 +20,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $tokenRecebido = $_POST['csrf_token'] ?? '';
+
+    if (!SegurancaHeaders::validarTokenCsrf($tokenRecebido)) {
+        die('Ação bloqueada: token de segurança inválido.');
+    }
+
+    $id    = (int) $_POST['id'];
+    $nome  = SegurancaHeaders::sanitizar($_POST['nome']);
+    $email = SegurancaHeaders::sanitizar($_POST['email']);
+
     // Atualizar os dados do usuário
     $usuario->atualizarUsuario($_POST['id'], $_POST['nome'], $_POST['email']);
     header('Location: usuarios.php');
     exit;
 }
+
+    $csrfToken = SegurancaHeaders::gerarTokenCsrf();
+
 ?>
 
 <!DOCTYPE html>
@@ -43,11 +63,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <main>
         <form method="POST">
             <h1>Editar Usuário</h1>
-            <input type="hidden" name="id" value="<?= htmlspecialchars($usuarioSelecionado['id']) ?>">
+            <form method="POST">
+              <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
+              <input type="hidden" name="id" value="<?= (int)htmlspecialchars($usuarioSelecionado['id']) ?>">
+
             <label>Nome:</label>
-            <input type="text" name="nome" value="<?= htmlspecialchars($usuarioSelecionado['nome']) ?>" required>
+            <input type="text" name="nome" value="<?= SegurancaHeaders::sanitizar($usuarioSelecionado['nome']) ?>" required><br>
+         
             <label>Email:</label>
-            <input type="email" name="email" value="<?= htmlspecialchars($usuarioSelecionado['email']) ?>" required>
+            <input type="email" name="email" value="<?= SegurancaHeaders::sanitizar($usuarioSelecionado['email']) ?>" required>
+
+
             <button type="submit">Salvar Alterações</button>
         </form>
     </main>

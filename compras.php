@@ -1,11 +1,39 @@
 <?php
+    require_once 'classes/SegurancaHeaders.php';
     require_once 'classes/Compra.php';
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $compra = new Compra();
-        $compra->adicionarCompra($_POST['ativo'], $_POST['quantidade'], $_POST['valor_unitario'], $_POST['data_compra']);
-        echo "Compra adicionada com sucesso!";
+    SegurancaHeaders::configSessionSecurity();
+    session_start();
+    SegurancaHeaders::setHeaders();
+
+        // Verificar se o usuário está logado   
+    if (!isset($_SESSION['usuario'])) {
+        header('Location: login.php');
+        exit;
     }
+
+    $mensagem = '';
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $tokenRecebido = $_POST['csrf_token'] ?? '';
+
+    if (!SegurancaHeaders::validarTokenCsrf($tokenRecebido)) {
+        $mensagem = 'Erro: requisição inválida (token CSRF ausente ou incorreto).';
+    } else {
+        // Sanitiza o campo de texto; valores numéricos são convertidos diretamente
+        $ativo          = SegurancaHeaders::sanitizar($_POST['ativo']);
+        $quantidade     = (int) $_POST['quantidade'];
+        $valorUnitario  = (float) $_POST['valor_unitario'];
+        $dataCompra     = SegurancaHeaders::sanitizar($_POST['data_compra']);
+
+        $compra = new Compra();
+        $compra->adicionarCompra($ativo, $quantidade, $valorUnitario, $dataCompra);
+        $mensagem = 'Compra adicionada com sucesso!';
+    }
+}
+
+$csrfToken = SegurancaHeaders::gerarTokenCsrf();
 ?>
 
 <!DOCTYPE html>
@@ -18,7 +46,12 @@
 </head>
 <body>
     <h1>Cadastrar Compra</h1>
+    <?php if ($mensagem): ?>
+        <p style="color:green;"><?= SegurancaHeaders::sanitizar($mensagem) ?></p>
+    <?php endif; ?>
     <form method="POST">
+        <!-- Todo formulario é obrigado ter um token CSRF -->
+        <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
         <label>Ativo:</label>
         <input type="text" name="ativo" required><br>
         <label>Quantidade:</label>

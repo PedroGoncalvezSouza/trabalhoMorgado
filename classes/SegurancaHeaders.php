@@ -45,13 +45,14 @@ public static function validarTokenCsrf(string $tokenRecebido): bool {
         session_start();
     }
 
-    if (empty($_SESSION['csrf_token']))) {
+    if (empty($_SESSION['csrf_token'])) {
         return false; // Token inválido ou ausente
     }
     return hash_equals($_SESSION['csrf_token'], $tokenRecebido);
+    }
 
-    public static function sanatizar(string $dados): string {
-        return htmlspecialchars(trim ($dado), ENT_QUOTES, ENT_HTML5, 'UTF-8'); // Converte caracteres especiais em entidades HTML
+    public static function sanitizar(string $dados): string {
+        return htmlspecialchars(trim ($dados), ENT_QUOTES | ENT_HTML5, 'UTF-8'); // Converte caracteres especiais em entidades HTML
     }
 
 }
